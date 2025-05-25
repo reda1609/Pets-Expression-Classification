@@ -33,6 +33,7 @@ class PetExpressionClassifier(LightningModule):
         y_pred = self(x)
         loss = F.cross_entropy(y_pred, y)
         self.log("train_loss", loss)
+        # print(f"Train Loss: {loss}")
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -40,11 +41,19 @@ class PetExpressionClassifier(LightningModule):
         y_pred = self(x)
         loss = F.cross_entropy(y_pred, y)
         self.log("val_loss", loss)
+        # print(f"Val Loss: {loss}")
         return loss
     
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
+    
+class LogToTerminal(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        print(f"Train Loss at Epoch {trainer.current_epoch}: {trainer.callback_metrics['train_loss']}")
+    
+    def on_validation_epoch_end(self, trainer, pl_module):
+        print(f"Val Loss at Epoch {trainer.current_epoch}: {trainer.callback_metrics['val_loss']}")
 
 def get_callbacks(args):
     callbacks = []
@@ -56,20 +65,16 @@ def get_callbacks(args):
         )
     callbacks.append(early_stopping_callback)
 
-    last_model_checkpoint_callback = ModelCheckpoint(
+    # Combined checkpoint callback that saves both last and best models
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=f"checkpoints/{args.model}",
         monitor="val_loss",
-        filename=f"{args.model}_last.pth",
-        save_last=True
-    )
-    callbacks.append(last_model_checkpoint_callback)
-
-    best_model_checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        filename=f"{args.model}_best.pth",
+        filename=f"{args.model}_epoch_{{epoch:02d}}_val_loss_{{val_loss:.2f}}",
         save_top_k=args.save_k,
+        save_last=True,
         mode="min"
     )
-    callbacks.append(best_model_checkpoint_callback)
+    callbacks.append(checkpoint_callback)
 
     lr_monitor_callback = LearningRateMonitor(logging_interval="epoch")
     callbacks.append(lr_monitor_callback)
@@ -77,11 +82,22 @@ def get_callbacks(args):
     rich_progress_bar_callback = RichProgressBar()
     callbacks.append(rich_progress_bar_callback)
 
+    log_to_terminal_callback = LogToTerminal()
+    callbacks.append(log_to_terminal_callback)
+
     return callbacks
 
-def get_dataset(folder_path):
-    train_dataset = ImageFolder(os.path.join(folder_path, "train"), transform=transforms.ToTensor())
-    val_dataset = ImageFolder(os.path.join(folder_path, "val"), transform=transforms.ToTensor())
+def get_dataset(folder_path, is_inception=False):
+    if is_inception:
+        IMG_SIZE = 299
+    else:
+        IMG_SIZE = 224
+    transform = transforms.Compose([
+        transforms.Resize((IMG_SIZE, IMG_SIZE)),
+        transforms.ToTensor()
+    ])
+    train_dataset = ImageFolder(os.path.join(folder_path, "train"), transform=transform)
+    val_dataset = ImageFolder(os.path.join(folder_path, "valid"), transform=transform)
     return train_dataset, val_dataset
 
 
@@ -95,10 +111,14 @@ def main(args):
         "InceptionV3": InceptionV3
     }
     model = models[args.model]()
+    if args.model == "InceptionV3":
+        is_inception = True
+    else:
+        is_inception = False
     print(f"Loaded {args.model} model")
 
-    folder_path = os.path.join("pets_expression", "Master Folder")
-    train_dataset, val_dataset = get_dataset(folder_path)
+    folder_path = "Master_Folder"
+    train_dataset, val_dataset = get_dataset(folder_path, is_inception)
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
@@ -125,7 +145,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--save_k", type=int, default=1)
     parser.add_argument("--max_epochs", type=int, default=20)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--gpus", type=int, default=1)
     args = parser.parse_args()
