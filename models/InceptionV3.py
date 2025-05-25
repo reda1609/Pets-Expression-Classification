@@ -68,16 +68,12 @@ class InceptionV3(nn.Module):
     def transform_input(self, x):
         IMGNET_MEAN = [0.485, 0.456, 0.406]
         IMGNET_STD  = [0.229, 0.224, 0.225]
-
         effective_mean = [(0.5 - m)/s for m, s in zip(IMGNET_MEAN, IMGNET_STD)]
         effective_std  = [0.5/s for s in IMGNET_STD]
-
-        # This transform replicates your current transform_input method
-        # assuming input is a tensor in [0,1] range
-        custom_normalization_transform = transforms.Normalize(mean=effective_mean, 
-                                                              std=effective_std)
-        
-        return custom_normalization_transform(x)
+    
+        norm = transforms.Normalize(mean=effective_mean, 
+                                    std=effective_std)        
+        return norm(x)
 
 
     def forward(self, x):
@@ -103,6 +99,7 @@ class InceptionV3(nn.Module):
 
         x = self.avgpool(x)
         x = self.dropout(x)
+        x = torch.flatten(x, 1)
         x = self.fc(x)
         x = self.fc_out(x)
         return x
@@ -275,7 +272,7 @@ class InceptionC(nn.Module):
         ]
         branch3x3dbl = torch.cat(branch3x3dbl, 1)
 
-        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=2)
+        branch_pool = F.avg_pool2d(x, kernel_size=3, stride=1, padding=1)
         branch_pool = self.branch_pool(branch_pool)
 
         outputs = [branch1x1, branch3x3, branch3x3dbl, branch_pool]
