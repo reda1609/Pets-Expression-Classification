@@ -276,9 +276,6 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
     rich_progress_bar_callback = RichProgressBar()
     callbacks.append(rich_progress_bar_callback)
 
-    log_to_terminal_callback = LogToTerminal()
-    callbacks.append(log_to_terminal_callback)
-
     # New ReportMetrics callback
     report_metrics_callback = ReportMetrics(class_names=class_names, 
                                             model_name=model_name,
