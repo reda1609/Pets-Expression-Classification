@@ -260,6 +260,7 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
 
     # Checkpoint path using root_dir
     checkpoint_dir = os.path.join(args.root_dir, "checkpoints", model_name)
+    os.makedirs(checkpoint_dir, exist_ok=True)
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
         monitor="val_loss",
