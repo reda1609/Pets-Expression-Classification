@@ -379,11 +379,18 @@ def main(args):
     
     model_name_arg = args.model
 
-    # --- Logger Setup ---
-    # Loggers save_dir using args.root_dir
+    # --- Logger Setup: Ensure all loggers use the same version directory ---
     logger_save_dir = os.path.join(args.root_dir, "logs")
-    csv_logger = CSVLogger(save_dir=logger_save_dir, name=model_name_arg)
-    tensorboard_logger = TensorBoardLogger(save_dir=logger_save_dir, name=model_name_arg, sub_dir="tensorboard_events")
+
+    temp_logger_for_version_check = CSVLogger(save_dir=logger_save_dir, name=model_name_arg)
+    run_version = temp_logger_for_version_check.version
+    del temp_logger_for_version_check # We don't need it anymore
+
+    print(f"Determined run version for all loggers: {run_version}")
+
+    # Step 2: Initialize all loggers with this specific version.
+    csv_logger = CSVLogger(save_dir=logger_save_dir, name=model_name_arg, version=run_version)
+    tensorboard_logger = TensorBoardLogger(save_dir=logger_save_dir, name=model_name_arg, version=run_version, sub_dir="tensorboard_events")
     
     loggers = [csv_logger, tensorboard_logger]
 
