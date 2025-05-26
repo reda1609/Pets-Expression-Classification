@@ -10,7 +10,7 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
-from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping, LearningRateMonitor, RichProgressBar
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint, EarlyStopping, LearningRateMonitor, TQDMProgressBar
 from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 
 from models.DenseNet121 import DenseNet121
@@ -273,8 +273,9 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
     lr_monitor_callback = LearningRateMonitor(logging_interval="epoch")
     callbacks.append(lr_monitor_callback)
 
-    rich_progress_bar_callback = RichProgressBar()
-    callbacks.append(rich_progress_bar_callback)
+    # Replaced RichProgressBar with TQDMProgressBar
+    tqdm_progress_bar = TQDMProgressBar(refresh_rate=20 if args.notebook else 1)
+    callbacks.append(tqdm_progress_bar)
 
     # New ReportMetrics callback
     report_metrics_callback = ReportMetrics(class_names=class_names, 
@@ -398,6 +399,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument("--augment", type=bool, default=True)
+    parser.add_argument("--notebook", action="store_true", help="Enable notebook-optimized TQDM progress bar display (adjusts refresh rate).")
 
     # Arguments for path management (Kaggle friendly)
     parser.add_argument("--root_dir", type=str, default=".", help="Root directory for all outputs (logs, checkpoints, reports)")
