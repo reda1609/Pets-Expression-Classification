@@ -352,7 +352,7 @@ def main(args):
     if args.augment:
         get_augmentations(os.path.join(args.data_dir, "train"), 
                           os.path.join(args.root_dir, "Augmented_Folder", "train"),
-                          num_augmentations_per_image=5)
+                          num_augmentations_per_image=3)
     
     # Use args.data_dir for dataset path
     train_folder_path = os.path.join(args.root_dir, "Augmented_Folder", "train")
