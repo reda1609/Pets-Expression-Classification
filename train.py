@@ -5,6 +5,8 @@ from torch.nn import functional as F
 import torch.optim as optim
 import torch
 import os
+import shutil
+from PIL import Image
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
@@ -289,7 +291,7 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
 
     return callbacks
 
-def get_dataset(folder_path, is_inception=False):
+def get_dataset(train_folder_path, val_folder_path, is_inception=False):
     if is_inception:
         IMG_SIZE = 299
     else:
@@ -298,11 +300,42 @@ def get_dataset(folder_path, is_inception=False):
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
         transforms.ToTensor()
     ])
-    train_dataset = ImageFolder(os.path.join(folder_path, "train"), transform=transform)
-    val_dataset = ImageFolder(os.path.join(folder_path, "valid"), transform=transform)
+    train_dataset = ImageFolder(os.path.join(train_folder_path), transform=transform)
+    val_dataset = ImageFolder(os.path.join(val_folder_path), transform=transform)
     return train_dataset, val_dataset
 
+def get_augmentations(original_data_root, augmented_data_root, num_augmentations_per_image=5):
+    # Define augmentations (customize as needed)
+    augmentation = transforms.Compose([
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(degrees=15),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3),
+        transforms.RandomGrayscale(p=0.1),
+    ])
 
+    # --- Create augmented dataset ---
+    for emotion_dir in os.listdir(original_data_root):
+        original_dir = os.path.join(original_data_root, emotion_dir)
+        augmented_dir = os.path.join(augmented_data_root, emotion_dir)
+        
+        os.makedirs(augmented_dir, exist_ok=True)  # Create output dir (e.g., /augmented_data/angry)
+
+        for img_name in os.listdir(original_dir):
+            img_path = os.path.join(original_dir, img_name)
+            
+            # --- Step 1: Copy original image to augmented dir ---
+            original_save_path = os.path.join(augmented_dir, f"orig_{img_name}")
+            shutil.copy2(img_path, original_save_path)  # Preserves metadata
+            
+            # --- Step 2: Generate & save augmented images ---
+            image = Image.open(img_path).convert("RGB")
+            
+            for i in range(num_augmentations_per_image):
+                augmented_image = augmentation(image)
+                augmented_save_path = os.path.join(augmented_dir, f"aug_{i}_{img_name}")
+                augmented_image.save(augmented_save_path)
+
+    print("Augmentation complete! Check:", augmented_data_root)
 
 def main(args):
     models = {
@@ -319,10 +352,16 @@ def main(args):
         is_inception = False
     print(f"Loaded {args.model} model")
 
-    folder_path = os.path.join("pets_expression", "Master Folder")
-    train_dataset, val_dataset = get_dataset(folder_path, is_inception)
+    if args.augment:
+        get_augmentations("/kaggle/input/pets-facial-expression-dataset/Master Folder/train", 
+                          "/kaggle/working/Augmented_Folder/train",
+                          num_augmentations_per_image=5)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+    train_folder_path = "/kaggle/working/Augmented_Folder/train"
+    val_folder_path = "/kaggle/input/pets-facial-expression-dataset/Master Folder/valid"
+    train_dataset, val_dataset = get_dataset(train_folder_path, val_folder_path, is_inception)
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
 
     classifier = PetExpressionClassifier(model, args.lr)
@@ -361,6 +400,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--gpus", type=int, default=1)
+    parser.add_argument("--augment", type=bool, default=True)
     args = parser.parse_args()
 
     main(args)
