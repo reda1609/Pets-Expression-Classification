@@ -253,7 +253,7 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
 
     early_stopping_callback = EarlyStopping(
             monitor="val_loss",
-            patience=5,
+            patience=args.patience,
             mode="min"
         )
     callbacks.append(early_stopping_callback)
@@ -274,7 +274,7 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
     callbacks.append(lr_monitor_callback)
 
     # Replaced RichProgressBar with TQDMProgressBar
-    tqdm_progress_bar = TQDMProgressBar(refresh_rate=20 if args.notebook else 1)
+    tqdm_progress_bar = TQDMProgressBar(refresh_rate=10 if args.notebook else 1)
     callbacks.append(tqdm_progress_bar)
 
     # New ReportMetrics callback
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpus", type=int, default=1)
     parser.add_argument("--augment", type=bool, default=True)
     parser.add_argument("--notebook", action="store_true", help="Enable notebook-optimized TQDM progress bar display (adjusts refresh rate).")
-
+    parser.add_argument("--patience", type=int, default=10)
     # Arguments for path management (Kaggle friendly)
     parser.add_argument("--root_dir", type=str, default=".", help="Root directory for all outputs (logs, checkpoints, reports)")
     parser.add_argument("--data_dir", type=str, default=os.path.join("pets_expression", "Master Folder"), help="Directory for input dataset")
