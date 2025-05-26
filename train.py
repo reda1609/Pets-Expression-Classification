@@ -333,20 +333,18 @@ def get_augmentations(original_data_root, augmented_data_root, num_augmentations
     print("Augmentation complete! Check:", augmented_data_root)
 
 def main(args):
-    models = {
+    models_registry = { # Renamed to avoid conflict if 'models' is a module import
         "DenseNet121": DenseNet121,
         "ResNet50": ResNet50,
         "VGG16": VGG16,
         "MobileNetV1": MobileNetV1,
         "InceptionV3": InceptionV3
     }
-    model = models[args.model]()
-    if args.model == "InceptionV3":
-        is_inception = True
-    else:
-        is_inception = False
-    print(f"Loaded {args.model} model")
 
+    # Determine if InceptionV3 is used for specific transformations
+    is_inception = (args.model == "InceptionV3")
+
+    # --- Dataset Loading & num_classes determination (moved earlier) ---
     if args.augment:
         get_augmentations(os.path.join(args.data_dir, "train"), 
                           os.path.join(args.root_dir, "Augmented_Folder", "train"),
@@ -357,10 +355,26 @@ def main(args):
     val_folder_path = os.path.join(args.data_dir, "valid")
     train_dataset, val_dataset = get_dataset(train_folder_path, val_folder_path, is_inception)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+    num_classes = len(train_dataset.classes)
+    class_names = train_dataset.classes # Get class names from the dataset
+    print(f"Dataset loaded: {num_classes} classes found: {class_names}")
+
+    # --- Model Instantiation (with num_classes) ---
+    model_class = models_registry[args.model]
+    try:
+        model = model_class(num_classes=num_classes)
+    except TypeError as e:
+        print(f"Error instantiating model {args.model}: {e}")
+        print(f"Please ensure the __init__ method of your '{args.model}' class in 'models/{args.model}.py' accepts a 'num_classes' argument.")
+        return
+        
+    print(f"Loaded {args.model} model, configured for {num_classes} classes.")
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True) # Added shuffle=True
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
 
-    classifier = PetExpressionClassifier(model, args.lr)
+    # Pass dynamic num_classes to classifier
+    classifier = PetExpressionClassifier(model, lr=args.lr, num_classes=num_classes)
     
     model_name_arg = args.model
 
@@ -374,7 +388,7 @@ def main(args):
 
     # Pass model_name and the desired subdirectory name for reports to the callback setup
     callbacks = get_callbacks(args, 
-                              class_names=["happy", "neutral", "sad", "angry"], 
+                              class_names=class_names, # Use dynamic class_names
                               model_name=model_name_arg,
                               report_subdir_name="custom_reports_and_plots") # This is a sub-folder name
 
