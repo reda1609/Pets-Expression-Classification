@@ -47,7 +47,7 @@ def evaluate_model(model, test_loader, device):
     
     return all_preds, all_targets
 
-def plot_confusion_matrix(cm, class_names, model_name, save_path):
+def plot_confusion_matrix(cm, class_names, model_name, save_path, plot_args):
     """Plot and save confusion matrix."""
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
@@ -56,11 +56,11 @@ def plot_confusion_matrix(cm, class_names, model_name, save_path):
     plt.ylabel("True")
     plt.title(f"Test Confusion Matrix - {model_name}")
     plt.savefig(save_path)
-    if args.notebook:
+    if plot_args.notebook:
         plt.show()
     plt.close()
 
-def plot_metrics(metrics_df, model_name, save_path):
+def plot_metrics(metrics_df, model_name, save_path, plot_args):
     """Plot all metrics from the evaluation."""
     plt.figure(figsize=(18, 12))
     
@@ -80,7 +80,7 @@ def plot_metrics(metrics_df, model_name, save_path):
     plt.suptitle(f"Test Metrics - {model_name}", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(save_path)
-    if args.notebook:
+    if plot_args.notebook:
         plt.show()
     plt.close()
 
@@ -164,7 +164,7 @@ def main(args):
     # Save confusion matrix
     cm_save_path = os.path.join(test_results_dir, 
                                 f"{base_filename}_confusion_matrix.png")
-    plot_confusion_matrix(cm, class_names, args.model, cm_save_path)
+    plot_confusion_matrix(cm, class_names, args.model, cm_save_path, args)
     
     # Save classification report
     report_save_path = os.path.join(test_results_dir, 
@@ -191,7 +191,7 @@ def main(args):
     
     # Create and save class-wise metrics plot
     metrics_plot_save_path = os.path.join(test_results_dir, f"{base_filename}_metrics.png")
-    plot_metrics(metrics_df, args.model, metrics_plot_save_path)
+    plot_metrics(metrics_df, args.model, metrics_plot_save_path, args)
     
     print(f"\nTest results saved to: {test_results_dir}")
 
