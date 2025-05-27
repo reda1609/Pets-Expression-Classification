@@ -263,11 +263,11 @@ def get_callbacks(args, class_names, model_name, report_subdir_name): # Added mo
     os.makedirs(checkpoint_dir, exist_ok=True)
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
-        monitor="val_loss",
-        filename=f"{model_name}_{{epoch:02d}}_{{val_loss:.2f}}", # User updated format
+        monitor="val_accuracy",
+        filename=f"{model_name}_{{epoch:02d}}_{{val_accuracy:.2f}}", # User updated format
         save_top_k=args.save_k,
         save_last=True,
-        mode="min"
+        mode="max"
     )
     callbacks.append(checkpoint_callback)
 
@@ -353,7 +353,9 @@ def main(args):
     
     # Use args.data_dir for dataset path
     train_folder_path = os.path.join(args.root_dir, "Augmented_Folder", "train")
+    print(f"Train folder path: {train_folder_path}")
     val_folder_path = os.path.join(args.data_dir, "valid")
+    print(f"Validation folder path: {val_folder_path}")
     train_dataset, val_dataset = get_dataset(train_folder_path, val_folder_path, is_inception)
 
     num_classes = len(train_dataset.classes)
@@ -378,9 +380,11 @@ def main(args):
     classifier = PetExpressionClassifier(model, lr=args.lr, num_classes=num_classes)
     
     model_name_arg = args.model
+    print(f"Model name: {model_name_arg}")
 
     # --- Logger Setup: Ensure all loggers use the same version directory ---
     logger_save_dir = os.path.join(args.root_dir, "logs")
+    print(f"Logger save directory: {logger_save_dir}")
 
     temp_logger_for_version_check = CSVLogger(save_dir=logger_save_dir, name=model_name_arg)
     run_version = temp_logger_for_version_check.version
