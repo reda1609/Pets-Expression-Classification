@@ -56,6 +56,8 @@ def plot_confusion_matrix(cm, class_names, model_name, save_path):
     plt.ylabel("True")
     plt.title(f"Test Confusion Matrix - {model_name}")
     plt.savefig(save_path)
+    if args.notebook:
+        plt.show()
     plt.close()
 
 def plot_metrics(metrics_df, model_name, save_path):
@@ -78,6 +80,8 @@ def plot_metrics(metrics_df, model_name, save_path):
     plt.suptitle(f"Test Metrics - {model_name}", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(save_path)
+    if args.notebook:
+        plt.show()
     plt.close()
 
 def get_dataset(test_folder_path, is_inception=False):
@@ -154,7 +158,7 @@ def main(args):
                                     output_dict=True)
     
     # Define base filename for outputs
-    base_filename = args.model
+    base_filename = f"{args.model}_test"
     print(f"Base filename: {base_filename}")
 
     # Save confusion matrix
@@ -169,6 +173,10 @@ def main(args):
         f.write(classification_report(true_labels, pred_labels, 
                                     target_names=class_names))
     
+    if args.notebook:
+        print("\nClassification Report:")
+        print(classification_report(true_labels, pred_labels, target_names=class_names))
+
     # Prepare data for plot_metrics
     metrics_list = []
     for class_name in class_names:
@@ -199,6 +207,7 @@ if __name__ == "__main__":
                        default=os.path.join("pets_expression", "Master Folder"),
                        help="Directory for input dataset")
     parser.add_argument("--checkpoint_file", type=str, help="Directory for input checkpoint file")
+    parser.add_argument("--notebook", action="store_true", help="Enable notebook mode for displaying plots and printing reports to terminal")
     
     args = parser.parse_args()
     main(args) 
