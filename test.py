@@ -154,7 +154,7 @@ def main(args):
                                     output_dict=True)
     
     # Define base filename for outputs
-    base_filename = args.checkpoint_file.split('.')[0]
+    base_filename = args.model
     print(f"Base filename: {base_filename}")
 
     # Save confusion matrix
