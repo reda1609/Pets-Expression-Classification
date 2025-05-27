@@ -16,13 +16,13 @@ from models.VGG import VGG16
 from models.MobileNet import MobileNetV1
 from models.InceptionV3 import InceptionV3
 
-def load_checkpoint(checkpoint_path, model_class, num_classes):
+def load_checkpoint(checkpoint_path, model_class, num_classes, device):
     """Load a checkpoint and return the model."""
     model = model_class(num_classes=num_classes)
     classifier = PetExpressionClassifier(model, num_classes=num_classes)
     
     # Load the checkpoint
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     classifier.load_state_dict(checkpoint['state_dict'])
     return classifier
 
@@ -139,7 +139,7 @@ def main(args):
     print(f"\nEvaluating checkpoint: {args.checkpoint_file}")
     
     # Load model from checkpoint with CPU mapping
-    model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes, map_location=device)
+    model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes, device)
     # Evaluate model
     all_preds, all_targets = evaluate_model(model, test_loader, device)
     
