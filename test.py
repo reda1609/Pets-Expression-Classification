@@ -138,9 +138,8 @@ def main(args):
     
     print(f"\nEvaluating checkpoint: {args.checkpoint_file}")
     
-    # Load model from checkpoint
-    model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes)
-    
+    # Load model from checkpoint with CPU mapping
+    model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes, map_location=device)
     # Evaluate model
     all_preds, all_targets = evaluate_model(model, test_loader, device)
     
