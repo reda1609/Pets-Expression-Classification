@@ -125,83 +125,65 @@ def main(args):
     test_results_dir = os.path.join(args.root_dir, "test_results", args.model)
     os.makedirs(test_results_dir, exist_ok=True)
     
-    # Load and evaluate each checkpoint
-    checkpoint_dir = os.path.join(args.root_dir, "checkpoints", args.model)
-    checkpoint_files = [f for f in os.listdir(checkpoint_dir) if f.endswith('.ckpt')]
+    # Construct checkpoint path from argument
+    if not args.checkpoint_file:
+        print("Error: --checkpoint_file argument is required.")
+        return
+
+    checkpoint_path = args.checkpoint_file
+
+    if not os.path.exists(checkpoint_path):
+        print(f"Error: Checkpoint file not found at {checkpoint_path}")
+        return
     
-    all_results = []
+    print(f"\nEvaluating checkpoint: {args.checkpoint_file}")
     
-    for checkpoint_file in checkpoint_files:
-        checkpoint_path = os.path.join(checkpoint_dir, checkpoint_file)
-        print(f"\nEvaluating checkpoint: {checkpoint_file}")
-        
-        # Load model from checkpoint
-        model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes)
-        
-        # Evaluate model
-        all_preds, all_targets = evaluate_model(model, test_loader, device)
-        
-        # Convert predictions to class labels
-        pred_labels = torch.argmax(all_preds, dim=1).cpu().numpy()
-        true_labels = all_targets.cpu().numpy()
-        
-        # Calculate metrics
-        cm = confusion_matrix(true_labels, pred_labels)
-        report = classification_report(true_labels, pred_labels, 
-                                     target_names=class_names, 
-                                     output_dict=True)
-        
-        # Save confusion matrix
-        cm_save_path = os.path.join(test_results_dir, 
-                                   f"{checkpoint_file[:-5]}_confusion_matrix.png")
-        plot_confusion_matrix(cm, class_names, args.model, cm_save_path)
-        
-        # Save classification report
-        report_save_path = os.path.join(test_results_dir, 
-                                      f"{checkpoint_file[:-5]}_classification_report.txt")
-        with open(report_save_path, 'w') as f:
-            f.write(classification_report(true_labels, pred_labels, 
-                                        target_names=class_names))
-        
-        # Store results for plotting
-        checkpoint_results = {
-            'checkpoint': checkpoint_file,
-            'accuracy': report['accuracy'],
-            'macro_avg_precision': report['macro avg']['precision'],
-            'macro_avg_recall': report['macro avg']['recall'],
-            'macro_avg_f1': report['macro avg']['f1-score']
-        }
-        
-        # Add class-wise metrics
-        for i, class_name in enumerate(class_names):
-            checkpoint_results[f'{class_name}_precision'] = report[class_name]['precision']
-            checkpoint_results[f'{class_name}_recall'] = report[class_name]['recall']
-            checkpoint_results[f'{class_name}_f1'] = report[class_name]['f1-score']
-        
-        all_results.append(checkpoint_results)
+    # Load model from checkpoint
+    model = load_checkpoint(checkpoint_path, models_registry[args.model], num_classes)
     
-    # Create and save comparison plots
-    results_df = pd.DataFrame(all_results)
+    # Evaluate model
+    all_preds, all_targets = evaluate_model(model, test_loader, device)
     
-    # Plot overall metrics comparison
-    metrics_plot_path = os.path.join(test_results_dir, "metrics_comparison.png")
-    plt.figure(figsize=(15, 10))
+    # Convert predictions to class labels
+    pred_labels = torch.argmax(all_preds, dim=1).cpu().numpy()
+    true_labels = all_targets.cpu().numpy()
     
-    metrics = ['accuracy', 'macro_avg_precision', 'macro_avg_recall', 'macro_avg_f1']
-    for metric in metrics:
-        plt.plot(results_df['checkpoint'], results_df[metric], marker='o', label=metric.replace('_', ' ').title())
+    # Calculate metrics
+    cm = confusion_matrix(true_labels, pred_labels)
+    report = classification_report(true_labels, pred_labels, 
+                                    target_names=class_names, 
+                                    output_dict=True)
     
-    plt.title(f"Test Metrics Comparison - {args.model}")
-    plt.xlabel("Checkpoint")
-    plt.ylabel("Score")
-    plt.xticks(rotation=45)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(metrics_plot_path)
-    plt.close()
+    # Define base filename for outputs
+    base_filename = args.checkpoint_file.split('.')[0]
+
+    # Save confusion matrix
+    cm_save_path = os.path.join(test_results_dir, 
+                                f"{base_filename}_confusion_matrix.png")
+    plot_confusion_matrix(cm, class_names, args.model, cm_save_path)
     
-    # Save all results to CSV
-    results_df.to_csv(os.path.join(test_results_dir, "all_results.csv"), index=False)
+    # Save classification report
+    report_save_path = os.path.join(test_results_dir, 
+                                    f"{base_filename}_classification_report.txt")
+    with open(report_save_path, 'w') as f:
+        f.write(classification_report(true_labels, pred_labels, 
+                                    target_names=class_names))
+    
+    # Prepare data for plot_metrics
+    metrics_list = []
+    for class_name in class_names:
+        metrics_list.append({
+            'class': class_name,
+            'accuracy': report['accuracy'], # Overall accuracy, same for all classes in this context
+            'precision': report[class_name]['precision'],
+            'recall': report[class_name]['recall'],
+            'f1': report[class_name]['f1-score']
+        })
+    metrics_df = pd.DataFrame(metrics_list)
+    
+    # Create and save class-wise metrics plot
+    metrics_plot_save_path = os.path.join(test_results_dir, f"{base_filename}_metrics.png")
+    plot_metrics(metrics_df, args.model, metrics_plot_save_path)
     
     print(f"\nTest results saved to: {test_results_dir}")
 
@@ -216,6 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", type=str, 
                        default=os.path.join("pets_expression", "Master Folder"),
                        help="Directory for input dataset")
+    parser.add_argument("--checkpoint_file", type=str, help="Directory for input checkpoint file")
     
     args = parser.parse_args()
     main(args) 
