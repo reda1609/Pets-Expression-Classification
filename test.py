@@ -155,6 +155,7 @@ def main(args):
     
     # Define base filename for outputs
     base_filename = args.checkpoint_file.split('.')[0]
+    print(f"Base filename: {base_filename}")
 
     # Save confusion matrix
     cm_save_path = os.path.join(test_results_dir, 
